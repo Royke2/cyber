@@ -1,6 +1,7 @@
 import socket
 import tkinter as tki
 from tkinter import filedialog
+import threading
 
 
 def start_server(ip, port, root):
@@ -31,6 +32,9 @@ def start_server(ip, port, root):
                           command=exit)
     exit_btn.pack()
 
+    connection_status_lbl = tki.Label(new_window, text="Connection_Status: no client connected", fg="red")
+    connection_status_lbl.pack()
+
     # label_file_explorer.tki.grid(column = 1, row = 1)
 
     # button_explore.tki.grid(column = 1, row = 2)
@@ -41,11 +45,24 @@ def start_server(ip, port, root):
     server_socket.bind((ip, port))
     server_socket.listen()
     print("Server is up and running")
-    (client_socket, client_address) = server_socket.accept()
-    print("Client connected")
+
+    connection_thread = threading.Thread(target=lambda: connect(server_socket, connection_status_lbl))
+    connection_thread.start()
+
+    print("attempting to connect to client")
+
     # data = client_socket.recv( 1024 ).decode()
     # print( "Client sent: " + data)
     # client_socket.send(data.encode())
+
+
+def connect(server_socket, connection_status_lbl):
+    (client_socket, client_address) = server_socket.accept()
+
+    connection_status_lbl['text'] = "Connection_Status: " + str(client_address) + " connected!"
+    connection_status_lbl["fg"] = "green"
+
+    print("Client connected")
 
 
 def browse_files(file_explorer_lbl):

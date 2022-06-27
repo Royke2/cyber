@@ -47,17 +47,15 @@ def start_server(ip, port, root):
     server_socket.listen()
     print("Server is up and running")
 
+    # We separate the connecting and reciving phase from the rest of the code in order to not interrupt the tkinter
+    # main thread.
     connection_thread = threading.Thread(target=lambda: connect(new_window, server_socket, connection_status_lbl))
     connection_thread.start()
 
-    print("attempting to connect to client")
 
-    # data = client_socket.recv( 1024 ).decode()
-    # print( "Client sent: " + data)
-    # client_socket.send(data.encode())
-
-
+# Waits for a client to connect and receives the public key from the client.
 def connect(new_window, server_socket, connection_status_lbl):
+    print("attempting to connect to client")
     (client_socket, client_address) = server_socket.accept()
 
     connection_status_lbl['text'] = "Connection Status: " + str(client_address) + " connected!"
@@ -76,6 +74,7 @@ def connect(new_window, server_socket, connection_status_lbl):
     print("Public key received")
 
 
+# Adds a file explorer in order to choose the file to upload.
 def browse_files(file_explorer_lbl):
     filename = filedialog.askopenfilename(initialdir="/",
                                           title="Select a File",

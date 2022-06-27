@@ -1,6 +1,5 @@
 import socket
 import tkinter as tki
-import threading
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
@@ -33,9 +32,13 @@ def start_client(ip, port, root):
 def attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time):
     wait_time_increment = 2.5  # in seconds
     max_wait_time = 10  # in seconds
+
     try:
         sock.connect((ip, port))
+
     except Exception as e:
+        # increases wait time each time due to the fact if it hasn't work up till then it most likely won't work
+        # immediately, so the system conserves resources.
         if connection_attempt_wait_time < max_wait_time:
             connection_attempt_wait_time += wait_time_increment
         connection_txt['text'] = "connection refused trying in: " + str(
@@ -44,6 +47,7 @@ def attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_
         print("connection refused trying in: " + str(connection_attempt_wait_time) + " seconds")
         root.after(int(connection_attempt_wait_time * 1000),
                    lambda: attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time))
+
     else:
         client_connected(sock, root, connection_txt)
 
@@ -60,11 +64,11 @@ def client_connected(sock, root, connection_txt):
     )
 
     public_key = private_key.public_key()
+    # serializing the key in order to be able to send the key to the server
     pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                   format=serialization.PublicFormat.SubjectPublicKeyInfo)
     sock.send(pem)
 
-    # sock.send(public_key.exportKey(format='PEM', passphrase=None, pkcs=1))
     print("client: sent key to server.")
     # connection_thread = threading.Thread(target=lambda: sock.send(public_key.encode()))
     #

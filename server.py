@@ -2,42 +2,35 @@ import socket
 import tkinter as tki
 from tkinter import filedialog
 
-def openNewWindow(IP66, PORT66, root):
-    newWindow = tki.Toplevel(root)
 
-    newWindow.title("New Window")
+def start_server(ip, port, root):
+    new_window = tki.Toplevel(root)
+    new_window.title("New Window")
+    new_window.geometry("500x500")
 
-    newWindow.geometry("500x500")
-    IP = IP66.get("1.0", "end-1c")
-    PORT2 = PORT66.get("1.0", 'end')
-    PORT = int(PORT2)
-    tki.Label(newWindow,
+    ip = ip.get("1.0", "end-1c")
+    port = port.get("1.0", 'end')
+    port = int(port)
+
+    tki.Label(new_window,
               text='CHAT').pack()
 
-    def browseFiles():
-        filename = filedialog.askopenfilename(initialdir="/",
-                                              title="Select a File",
-                                              filetypes=(("Text files",
-                                                          "*.txt*"),
-                                                         ("all files",
-                                                          "*.*")))
+    file_explorer_lbl = tki.Label(new_window,
+                                  text="File Explorer:",
+                                  width=100, height=4,
+                                  fg="blue")
+    file_explorer_lbl.pack()
 
-        # Change label contents
-        label_file_explorer.configure(text="File Opened: " + filename)
-
-    label_file_explorer = tki.Label(newWindow,
-                                    text="File Explorer using Tkinter",
-                                    width=100, height=4,
-                                    fg="blue")
-    label_file_explorer.pack()
-    button_explore = tki.Button(newWindow,
+    explore_files_btn = tki.Button(new_window,
                                 text="Browse Files",
-                                command=browseFiles)
-    button_explore.pack()
-    button_exit = tki.Button(newWindow,
+                                command=lambda: browse_files(file_explorer_lbl))
+    explore_files_btn.pack()
+
+    exit_btn = tki.Button(new_window,
                              text="Exit",
                              command=exit)
-    button_exit.pack()
+    exit_btn.pack()
+    
     # label_file_explorer.tki.grid(column = 1, row = 1)
 
     # button_explore.tki.grid(column = 1, row = 2)
@@ -45,7 +38,7 @@ def openNewWindow(IP66, PORT66, root):
     # button_exit.grid(column = 1,row = 3)
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.bind((IP, PORT))
+    server_socket.bind((ip, port))
     server_socket.listen()
     print("Server is up and running")
     (client_socket, client_address) = server_socket.accept()
@@ -53,3 +46,15 @@ def openNewWindow(IP66, PORT66, root):
     # data = client_socket.recv( 1024 ).decode()
     # print( "Client sent: " + data)
     # client_socket.send(data.encode())
+
+
+def browse_files(file_explorer_lbl):
+    filename = filedialog.askopenfilename(initialdir="/",
+                                          title="Select a File",
+                                          filetypes=(("Text files",
+                                                      "*.txt*"),
+                                                     ("all files",
+                                                      "*.*")))
+
+    # Change label contents
+    file_explorer_lbl.configure(text="File Opened: " + filename)

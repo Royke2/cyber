@@ -3,6 +3,7 @@ import tkinter as tki
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+import threading
 
 
 def start_client(ip, port, root):
@@ -26,6 +27,9 @@ def start_client(ip, port, root):
     connection_attempt_wait_time = 0
     root.after(connection_attempt_wait_time,
                lambda: attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time))
+    # Checks if the client needs to close
+    exit_thread = threading.Thread(
+        target=lambda: exit_thread(new_window, server_socket, connection_status_lbl, shutdown_btn))
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds
@@ -74,3 +78,17 @@ def client_connected(sock, root, connection_txt):
 
 def send_key(sock, public_key):
     sock.send(public_key.encode())
+
+
+def receive_from_server(server_socket, client_socket, window):
+    data = server_socket.recv(2048).decode()
+    if data == "exit":
+        client_socket.close()
+        print("Client successfully closed!")
+        window.destroy()
+    return data
+
+
+def checks_thread(server_socket, client_socket, window):
+    while True:
+        receive_from_server(server_socket, client_socket, window)

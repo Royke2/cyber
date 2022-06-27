@@ -1,6 +1,7 @@
 import socket
 import tkinter as tki
 from server import openNewWindow
+from client import start_client
 
 root = tki.Tk()
 root.geometry("300x300")
@@ -77,11 +78,17 @@ def main_menu():
     confirmation_txt.insert(tki.END, 'DONE?')
     confirmation_txt.pack(pady=5)
 
-    start_server = tki.Button(root,
-                              text="yes",
-                              command=lambda:
-                              openNewWindow(ip, port, root))
-    start_server.pack()
+    start_server_btn = tki.Button(root,
+                                  text="start server",
+                                  command=lambda:
+                                  openNewWindow(ip, port, root))
+    start_server_btn.pack()
+
+    start_client_btn = tki.Button(root,
+                                  text="start client",
+                                  command=lambda:
+                                  start_client(ip, port, root))
+    start_client_btn.pack()
 
 
 root.mainloop()

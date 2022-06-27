@@ -18,27 +18,12 @@ open_main_menu_btn = tki.Button(root,
 open_main_menu_btn.pack()
 
 
+# clears everything on the window and opens the main menu
 def clear_frame():
     for widgets in root.winfo_children():
         widgets.destroy()
 
     main_menu()
-
-
-def get_local_ip():
-    server = socket.socket()
-
-    local_ip = socket.gethostbyname(socket.gethostname())
-    return local_ip
-
-
-def show_local_ip():
-    local_ip = get_local_ip()
-    local_ip_txt = tki.Text(root, height=1,
-                            width=30,
-                            bg="yellow")
-    local_ip_txt.insert(tki.END, str(local_ip))
-    local_ip_txt.pack(pady=5)
 
 
 def main_menu():
@@ -89,6 +74,22 @@ def main_menu():
                                   command=lambda:
                                   start_client(ip, port, root))
     start_client_btn.pack()
+
+    # @returns the local ip of the user
+    def get_local_ip():
+        server = socket.socket()
+
+        local_ip = socket.gethostbyname(socket.gethostname())
+        return local_ip
+
+    # displays the users local ip on the screen
+    def show_local_ip():
+        local_ip = get_local_ip()
+        local_ip_txt = tki.Text(root, height=1,
+                                width=30,
+                                bg="yellow")
+        local_ip_txt.insert(tki.END, str(local_ip))
+        local_ip_txt.pack(pady=5)
 
 
 root.mainloop()

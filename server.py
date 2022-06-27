@@ -2,6 +2,7 @@ import socket
 import tkinter as tki
 from tkinter import filedialog
 import threading
+from cryptography.hazmat.primitives.serialization import load_pem_public_key
 
 
 def start_server(ip, port, root):
@@ -32,7 +33,7 @@ def start_server(ip, port, root):
                           command=exit)
     exit_btn.pack()
 
-    connection_status_lbl = tki.Label(new_window, text="Connection_Status: no client connected", fg="red")
+    connection_status_lbl = tki.Label(new_window, text="Connection Status: no client connected", fg="red")
     connection_status_lbl.pack()
 
     # label_file_explorer.tki.grid(column = 1, row = 1)
@@ -46,7 +47,7 @@ def start_server(ip, port, root):
     server_socket.listen()
     print("Server is up and running")
 
-    connection_thread = threading.Thread(target=lambda: connect(server_socket, connection_status_lbl))
+    connection_thread = threading.Thread(target=lambda: connect(new_window, server_socket, connection_status_lbl))
     connection_thread.start()
 
     print("attempting to connect to client")
@@ -56,13 +57,23 @@ def start_server(ip, port, root):
     # client_socket.send(data.encode())
 
 
-def connect(server_socket, connection_status_lbl):
+def connect(new_window, server_socket, connection_status_lbl):
     (client_socket, client_address) = server_socket.accept()
 
-    connection_status_lbl['text'] = "Connection_Status: " + str(client_address) + " connected!"
+    connection_status_lbl['text'] = "Connection Status: " + str(client_address) + " connected!"
     connection_status_lbl["fg"] = "green"
 
     print("Client connected")
+
+    key_status_lbl = tki.Label(new_window, text="Public key status: not received! ", fg="red")
+    key_status_lbl.pack()
+
+    public_key = load_pem_public_key(client_socket.recv(2048))
+
+    key_status_lbl['text'] = "Key Status: " + str(public_key) + " received!"
+    key_status_lbl["fg"] = "green"
+
+    print("Public key received")
 
 
 def browse_files(file_explorer_lbl):

@@ -1,5 +1,9 @@
 import socket
 import tkinter as tki
+import threading
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
 
 
 def start_client(ip, port, root):
@@ -47,3 +51,25 @@ def attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_
 # run when the client has successfully connected to the server
 def client_connected(sock, root, connection_txt):
     connection_txt['text'] = "the client has successfully connected to the server"
+    connection_txt['fg'] = "green"
+
+    private_key = rsa.generate_private_key(
+        public_exponent=65537,
+        key_size=2048,
+        backend=default_backend()
+    )
+
+    public_key = private_key.public_key()
+    pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
+                                  format=serialization.PublicFormat.SubjectPublicKeyInfo)
+    sock.send(pem)
+
+    # sock.send(public_key.exportKey(format='PEM', passphrase=None, pkcs=1))
+    print("client: sent key to server.")
+    # connection_thread = threading.Thread(target=lambda: sock.send(public_key.encode()))
+    #
+    # connection_thread.start()
+
+
+def send_key(sock, public_key):
+    sock.send(public_key.encode())

@@ -34,7 +34,7 @@ def try_connection(sock, ip, port, root, connection_txt, connection_attempt_wait
     try:
         sock.connect((ip, port))
     except Exception as e:
-        if connection_attempt_wait_time < max_wait_time * 1000:
+        if connection_attempt_wait_time < max_wait_time:
             connection_attempt_wait_time += wait_time_increment
         connection_txt['text'] = "connection refused trying in: " + str(
             connection_attempt_wait_time) + " seconds"

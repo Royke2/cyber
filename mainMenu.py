@@ -1,6 +1,6 @@
 import socket
 import tkinter as tki
-from server import openNewWindow
+from server import start_server
 from client import start_client
 
 root = tki.Tk()
@@ -25,20 +25,20 @@ def clear_frame():
     main_menu()
 
 
-def know_ip():
+def get_local_ip():
     server = socket.socket()
 
-    ip1 = socket.gethostbyname(socket.gethostname())
-    return ip1
+    local_ip = socket.gethostbyname(socket.gethostname())
+    return local_ip
 
 
 def show_local_ip():
-    ip1 = know_ip()
-    Output3 = tki.Text(root, height=1,
-                       width=30,
-                       bg="yellow")
-    Output3.insert(tki.END, str(ip1))
-    Output3.pack(pady=5)
+    local_ip = get_local_ip()
+    local_ip_txt = tki.Text(root, height=1,
+                            width=30,
+                            bg="yellow")
+    local_ip_txt.insert(tki.END, str(local_ip))
+    local_ip_txt.pack(pady=5)
 
 
 def main_menu():
@@ -81,7 +81,7 @@ def main_menu():
     start_server_btn = tki.Button(root,
                                   text="start server",
                                   command=lambda:
-                                  openNewWindow(ip, port, root))
+                                  start_server(ip, port, root))
     start_server_btn.pack()
 
     start_client_btn = tki.Button(root,

@@ -1,7 +1,5 @@
 import socket
 import tkinter as tki
-from cryptography.hazmat.backends import default_backend
-from cryptography.hazmat.primitives.asymmetric import rsa
 
 
 def start_client(ip, port, root):
@@ -49,13 +47,3 @@ def attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_
 # run when the client has successfully connected to the server
 def client_connected(sock, root, connection_txt):
     connection_txt['text'] = "the client has successfully connected to the server"
-    private_key = get_private_key()
-    public_key = private_key.public_key()
-
-
-def get_private_key():
-    return rsa.generate_private_key(
-        public_exponent=65537,
-        key_size=2048,
-        backend=default_backend()
-    )

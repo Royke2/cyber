@@ -70,9 +70,6 @@ def client_connected(sock, root, connection_txt):
     sock.send(pem)
 
     print("client: sent key to server.")
-    # connection_thread = threading.Thread(target=lambda: sock.send(public_key.encode()))
-    #
-    # connection_thread.start()
 
 
 def send_key(sock, public_key):

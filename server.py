@@ -22,15 +22,15 @@ def start_server(ip, port, root):
     file_explorer_lbl.pack()
 
     explore_files_btn = tki.Button(new_window,
-                                text="Browse Files",
-                                command=lambda: browse_files(file_explorer_lbl))
+                                   text="Browse Files",
+                                   command=lambda: browse_files(file_explorer_lbl))
     explore_files_btn.pack()
 
     exit_btn = tki.Button(new_window,
-                             text="Exit",
-                             command=exit)
+                          text="Exit",
+                          command=exit)
     exit_btn.pack()
-    
+
     # label_file_explorer.tki.grid(column = 1, row = 1)
 
     # button_explore.tki.grid(column = 1, row = 2)

@@ -24,13 +24,13 @@ def start_client(ip, port, root):
 
     connection_attempt_wait_time = 0
     root.after(connection_attempt_wait_time,
-               lambda: try_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time))
+               lambda: attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time))
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds
-def try_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time):
-    wait_time_increment = 2.5 # in seconds
-    max_wait_time = 10 # in seconds
+def attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time):
+    wait_time_increment = 2.5  # in seconds
+    max_wait_time = 10  # in seconds
     try:
         sock.connect((ip, port))
     except Exception as e:
@@ -41,9 +41,10 @@ def try_connection(sock, ip, port, root, connection_txt, connection_attempt_wait
         print(str(e))
         print("connection refused trying in: " + str(connection_attempt_wait_time) + " seconds")
         root.after(int(connection_attempt_wait_time * 1000),
-                   lambda: try_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time))
+                   lambda: attempt_connection(sock, ip, port, root, connection_txt, connection_attempt_wait_time))
     else:
         client_connected(sock, root, connection_txt)
+
 
 # run when the client has successfully connected to the server
 def client_connected(sock, root, connection_txt):

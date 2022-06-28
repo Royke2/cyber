@@ -4,7 +4,7 @@ from server import start_server
 from client import start_client
 
 root = tki.Tk()
-root.geometry("300x300")
+root.geometry("300x400")
 T = 'CHAT'
 
 opening_msg_txt = tki.Label(root, height=2, width=50,
@@ -29,7 +29,7 @@ def clear_frame():
 def main_menu():
     ip_txt = tki.Text(root, height=1,
                       width=30,
-                      bg="blue")
+                      bg="light blue")
     ip_txt.insert(tki.END, 'PLEASE PUT YOUR IP INFO:')
     ip_txt.pack(pady=5)
 
@@ -38,7 +38,7 @@ def main_menu():
 
     port_txt = tki.Text(root, height=1,
                         width=30,
-                        bg="blue")
+                        bg="light blue")
     port_txt.insert(tki.END, 'PLEASE PUT YOUR PORT INFO:')
     port_txt.pack(pady=5)
 
@@ -47,7 +47,7 @@ def main_menu():
 
     local_ip_txt = tki.Text(root, height=1,
                             width=30,
-                            bg="blue")
+                            bg="light blue")
     local_ip_txt.insert(tki.END, 'DO YOU WANT TO KNOW YOUR IP?')
     local_ip_txt.pack(pady=5)
 
@@ -74,6 +74,11 @@ def main_menu():
                                   command=lambda:
                                   start_client(ip, port, root))
     start_client_btn.pack()
+
+    exit_btn = tki.Button(root,
+                          text="Exit",
+                          command=exit)
+    exit_btn.pack()
 
     # @returns the local ip of the user
     def get_local_ip():

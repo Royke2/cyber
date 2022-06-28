@@ -44,6 +44,7 @@ def main_menu():
     port_txt.pack(pady=5)
 
     port = tki.Text(root, height=1, width=15)
+    port.insert(tki.END, '8820')
     port.pack(pady=5)
 
     local_ip_txt = tki.Text(root, height=1,

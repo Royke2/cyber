@@ -1,9 +1,10 @@
 import socket
 import tkinter as tki
+from tkinter import filedialog
+
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
-import threading
 
 
 def start_client(ip, port, root):
@@ -22,6 +23,17 @@ def start_client(ip, port, root):
     connection_txt = tki.Label(new_window,
                                text='connecting to server please wait...')
     connection_txt.pack()
+
+    file_explorer_lbl = tki.Label(new_window,
+                                  text="File Explorer:",
+                                  width=100, height=4,
+                                  fg="blue")
+    file_explorer_lbl.pack()
+    explore_files_btn = tki.Button(new_window,
+                                   text="Browse Files",
+                                   command=lambda: browse_files(file_explorer_lbl))
+    explore_files_btn.pack()
+
     shutdown_btn = tki.Button(new_window,
                               text="Exit",
                               command=lambda: close_client(new_window, client_socket))
@@ -35,6 +47,20 @@ def start_client(ip, port, root):
     root.after(connection_attempt_wait_time,
                lambda: attempt_connection(client_socket, ip, port, root, connection_txt, connection_attempt_wait_time,
                                           shutdown_btn, new_window))
+
+
+# Adds a file explorer in order to choose the file to upload.
+def browse_files(file_explorer_lbl):
+    filename = filedialog.askopenfilename(initialdir="/",
+                                          title="Select a File",
+                                          filetypes=(("Text files",
+                                                      "*.txt*"),
+                                                     ("all files",
+                                                      "*.*")))
+
+    # Change label contents
+    if filename != "":
+        file_explorer_lbl.configure(text="File Opened: " + filename)
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds

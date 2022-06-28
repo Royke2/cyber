@@ -1,4 +1,5 @@
 import socket
+import select
 import tkinter as tki
 from tkinter import filedialog
 import threading
@@ -14,20 +15,6 @@ def start_server(ip, port, root):
     port = port.get("1.0", 'end')
     port = int(port)
 
-    tki.Label(new_window,
-              text='CHAT').pack()
-
-    file_explorer_lbl = tki.Label(new_window,
-                                  text="File Explorer:",
-                                  width=100, height=4,
-                                  fg="blue")
-    file_explorer_lbl.pack()
-
-    explore_files_btn = tki.Button(new_window,
-                                   text="Browse Files",
-                                   command=lambda: browse_files(file_explorer_lbl))
-    explore_files_btn.pack()
-
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     shutdown_btn = tki.Button(new_window,
@@ -39,12 +26,6 @@ def start_server(ip, port, root):
 
     connection_status_lbl = tki.Label(new_window, text="Connection Status: no client connected", fg="red")
     connection_status_lbl.pack()
-
-    # label_file_explorer.tki.grid(column = 1, row = 1)
-
-    # button_explore.tki.grid(column = 1, row = 2)
-
-    # button_exit.grid(column = 1,row = 3)
 
     server_socket.bind((ip, port))
     server_socket.listen()
@@ -85,19 +66,6 @@ def connect(new_window, server_socket, connection_status_lbl, shutdown_btn):
 
     except Exception as e:
         print(e)
-
-
-# Adds a file explorer in order to choose the file to upload.
-def browse_files(file_explorer_lbl):
-    filename = filedialog.askopenfilename(initialdir="/",
-                                          title="Select a File",
-                                          filetypes=(("Text files",
-                                                      "*.txt*"),
-                                                     ("all files",
-                                                      "*.*")))
-
-    # Change label contents
-    file_explorer_lbl.configure(text="File Opened: " + filename)
 
 
 def close_server(window, server_socket):

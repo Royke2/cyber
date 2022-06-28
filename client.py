@@ -28,7 +28,7 @@ def start_client(ip, port, root):
     shutdown_btn.pack()
     # if the window is manually closed the client is closed
     new_window.protocol("WM_DELETE_WINDOW", lambda: close_client(new_window, client_socket))
-    
+
     root.update()
 
     connection_attempt_wait_time = 0
@@ -90,6 +90,8 @@ def send_key(sock, public_key):
     sock.send(public_key.encode())
 
 
+# checks if the server has closed and if so shuts down the client
+# @returns data from the client
 def receive_from_server(window, client_socket, server_socket):
     data = server_socket.recv(2048).decode()
     if data == "exit":
@@ -103,6 +105,7 @@ def close_client(window, client_socket):
     window.destroy()
 
 
+# closes the client and notifies the server
 def shutdown_client(window, client_socket):
     try:
         client_socket.send("bye".encode())

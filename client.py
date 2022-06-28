@@ -107,6 +107,7 @@ def client_connected(client_socket, root, connection_txt, shutdown_btn, new_wind
     # serializing the key in order to be able to send the key to the server
     pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                   format=serialization.PublicFormat.SubjectPublicKeyInfo)
+    print("Client: public key:" + str(pem))
     client_socket.send(pem)
 
     print("client: sent key to server.")

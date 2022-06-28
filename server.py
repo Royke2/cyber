@@ -63,8 +63,9 @@ def connect(new_window, server_socket, client_sockets, status_textbox):
         status_textbox.yview(tki.END)
 
         print("Client connected")
-        
-        public_key = load_pem_public_key(client_socket.recv(2048))
+
+        public_key = client_socket.recv(2048)
+        # public_key = load_pem_public_key(client_socket.recv(2048))
 
         status_textbox.insert(tki.END, "\nKey from: " + str(client_address) + " received!: \n" + str(public_key),
                               TextColor.KEY)

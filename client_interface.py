@@ -4,6 +4,8 @@ from tkinter import filedialog
 from scrolled_status_text import *
 from threading import Thread
 from time import sleep
+from data_convetions import MessagePrefix
+from client import Client
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -112,6 +114,28 @@ def client_connected(client_socket, status_textbox):
 
     print("client: sent key to server.")
 
+    fellow_clients = []
+
+    try:
+        while True:
+            data = receive_from_server()
+            if data == MessagePrefix.DISCONNECT.value:
+                break
+            data = data.split(',')
+            fellow_client_address = ""
+            fellow_client_key = ""
+            for i in range(0, data.len(), 2):
+                if data[i] == MessagePrefix.CONNECTION.value:
+                    status_textbox.insert("The client has successfully connected to the server!", TextColor.CONNECTION)
+                    fellow_client_address = data[i + 1]
+                elif data[i] == MessagePrefix.KEY.value:
+                    fellow_client_key == data[i + 1]
+            if fellow_client_address != "":
+                fellow_clients.append(Client(fellow_client_address, public_key=fellow_client_key))
+
+    except Exception as e:
+        print("client failed to receive data: " + str(e))
+
 
 def send_key(sock, public_key):
     sock.send(public_key.encode())
@@ -129,7 +153,7 @@ def receive_from_server(window, client_socket, server_socket):
 # closes the client and notifies the server
 def shutdown_client(window, client_socket):
     try:
-        client_socket.send("".encode())
+        client_socket.send(MessagePrefix.DISCONNECT.value.encode())
     except Exception as e:
         print("Attempted to notify server of client shutdown.\n" + str(e))
     print("Client successfully closed!")

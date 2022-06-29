@@ -3,6 +3,7 @@ import socket
 import threading
 import tkinter as tki
 from scrolled_status_text import *
+from data_convetions import MessagePrefix
 import client
 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -61,7 +62,7 @@ def connect(new_window, server_socket, clients, status_textbox):
                 # if the socket is new add him to the connection
                 if current_socket == server_socket:
                     (client_socket, client_address) = server_socket.accept()
-                    clients.append(client.Client(client_socket, client_socket))
+                    clients.append(client.Client(client_address, client_socket))
                     status_textbox.insert("Connection Status: " + str(client_address) + " connected!",
                                           TextColor.CONNECTION)
                     print("Client connected")
@@ -105,12 +106,12 @@ def shutdown_server(window, server_socket, clients, connect_thread):
 # If the client disconnected the server removes him from the client list.
 # @returns data received from client
 def receive_data(client_sending_data, clients, status_textbox):
-    data = ""
+    data = MessagePrefix.DISCONNECT.value
     try:
         data = client_sending_data.client_socket.recv(2048).decode()
     except Exception as e:
-        print("Failed to receive data from: " + client_sending_data.client_address + str(e))
-    if data == "":
+        print("Failed to receive data from: " + str(client_sending_data.client_address) + str(e))
+    if data == MessagePrefix.DISCONNECT.value:
         try:
             client_sending_data.client_socket.close()
         except Exception as e:

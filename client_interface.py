@@ -1,6 +1,7 @@
 import socket
 import tkinter as tki
 from tkinter import filedialog
+from scrolled_status_text import *
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -20,9 +21,10 @@ def start_client(ip, port, root):
     port = int(port)
     print("ip: " + ip)
     print("port: " + str(port))
-    connection_txt = tki.Label(new_window,
-                               text='connecting to server please wait...')
-    connection_txt.pack()
+
+    status_textbox = ScrolledStatusText(new_window, height='20', width='100', wrap=tki.WORD)
+    status_textbox.insert("connecting to server please wait...", TextColor.MESSAGE)
+    status_textbox.pack()
 
     file_explorer_lbl = tki.Label(new_window,
                                   text="File Explorer:",
@@ -45,7 +47,7 @@ def start_client(ip, port, root):
 
     connection_attempt_wait_time = 0
     root.after(connection_attempt_wait_time,
-               lambda: attempt_connection(client_socket, ip, port, root, connection_txt, connection_attempt_wait_time,
+               lambda: attempt_connection(client_socket, ip, port, root, status_textbox, connection_attempt_wait_time,
                                           shutdown_btn, new_window))
 
 
@@ -64,35 +66,33 @@ def browse_files(file_explorer_lbl):
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds
-def attempt_connection(client_socket, ip, port, root, connection_txt, connection_attempt_wait_time, shutdown_btn,
+def attempt_connection(client_socket, ip, port, root, status_textbox, connection_attempt_wait_time, shutdown_btn,
                        new_window):
     wait_time_increment = 2.5  # in seconds
     max_wait_time = 10  # in seconds
 
     try:
         client_socket.connect((ip, port))
-
     except Exception as e:
         # increases wait time each time due to the fact if it hasn't work up till then it most likely won't work
         # immediately, so the system conserves resources.
         if connection_attempt_wait_time < max_wait_time:
             connection_attempt_wait_time += wait_time_increment
-        connection_txt['text'] = "connection refused trying in: " + str(
-            connection_attempt_wait_time) + " seconds"
+        status_textbox.insert("connection refused trying in: " + str(
+            connection_attempt_wait_time) + " seconds", TextColor.MESSAGE)
         print(str(e))
         print("connection refused trying in: " + str(connection_attempt_wait_time) + " seconds")
         root.after(int(connection_attempt_wait_time * 1000),
-                   lambda: attempt_connection(client_socket, ip, port, root, connection_txt,
+                   lambda: attempt_connection(client_socket, ip, port, root, status_textbox,
                                               connection_attempt_wait_time, shutdown_btn, new_window))
 
     else:
-        client_connected(client_socket, root, connection_txt, shutdown_btn, new_window)
+        client_connected(client_socket, root, status_textbox, shutdown_btn, new_window)
 
 
 # run when the client has successfully connected to the server
-def client_connected(client_socket, root, connection_txt, shutdown_btn, new_window):
-    connection_txt['text'] = "the client has successfully connected to the server"
-    connection_txt['fg'] = "green"
+def client_connected(client_socket, root, status_textbox, shutdown_btn, new_window):
+    status_textbox.insert("The client has successfully connected to the server!", TextColor.CONNECTION)
 
     shutdown_btn['command'] = lambda: shutdown_client(new_window, client_socket)
     new_window.protocol("WM_DELETE_WINDOW", lambda: shutdown_client(new_window, client_socket))

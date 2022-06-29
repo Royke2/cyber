@@ -2,8 +2,7 @@ import select
 import socket
 import threading
 import tkinter as tki
-from enum import Enum
-from tkinter import scrolledtext
+from scrolled_status_text import *
 import client
 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -21,10 +20,9 @@ def start_server(ip, port, root):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     clients = []
 
-    status_textbox = scrolledtext.ScrolledText(new_window, height='20', width='100', wrap=tki.WORD)
-    for color in TextColor:
-        status_textbox.tag_config(color, foreground=color.value)
-    status_textbox.insert(tki.END, "Connection Status: no client connected", TextColor.DISCONNECTION)
+    status_textbox = ScrolledStatusText(new_window, height='20', width='100', wrap=tki.WORD)
+    status_textbox.insert("Connection Status: no client connected", TextColor.MESSAGE)
+
     # We separate the connecting and receiving phase from the rest of the code in order to not interrupt the tkinter
     # main thread.
     connection_thread = threading.Thread(
@@ -48,12 +46,6 @@ def start_server(ip, port, root):
     connection_thread.start()
 
 
-class TextColor(Enum):
-    CONNECTION = 'green'
-    DISCONNECTION = 'red'
-    KEY = 'blue'
-
-
 # Waits for a client to connect and receives the public key from the client.
 def connect(new_window, server_socket, clients, status_textbox):
     # Due to server shutting down sometimes before a connection has been made a try catch is required
@@ -70,9 +62,8 @@ def connect(new_window, server_socket, clients, status_textbox):
                 if current_socket == server_socket:
                     (client_socket, client_address) = server_socket.accept()
                     clients.append(client.Client(client_socket, client_socket))
-                    status_textbox.insert(tki.END, "\nConnection Status: " + str(client_address) + " connected!",
+                    status_textbox.insert("Connection Status: " + str(client_address) + " connected!",
                                           TextColor.CONNECTION)
-                    status_textbox.yview(tki.END)
                     print("Client connected")
                 else:
                     print("received data from client")
@@ -88,15 +79,11 @@ def connect(new_window, server_socket, clients, status_textbox):
                                 # public_key = load_pem_public_key(client_socket.recv(2048))
                                 if public_key != "":
                                     current_client.public_key = public_key
-                                    status_textbox.insert(tki.END,
-                                                          "\nKey from: " + str(
-                                                              current_client.client_address) + " received!: \n" + str(
-                                                              public_key),
-                                                          TextColor.KEY)
-                                    status_textbox.yview(tki.END)
+                                    status_textbox.insert(
+                                        "Key from: " + str(current_client.client_address) + " received!: \n" + str(
+                                            public_key), TextColor.KEY)
                             else:
                                 receive_data(current_client, clients, status_textbox)
-
     except Exception as e:
         print("!!! error in connection method !!! " + str(e))
 
@@ -128,8 +115,7 @@ def receive_data(client_sending_data, clients, status_textbox):
             client_sending_data.client_socket.close()
         except Exception as e:
             print("Failed to close: " + client_sending_data.client_address + str(e))
-        status_textbox.insert(tki.END, "\nClient: " + str(client_sending_data.client_address) + " has disconnected!",
+        status_textbox.insert("Client: " + str(client_sending_data.client_address) + " has disconnected!",
                               TextColor.DISCONNECTION)
-        status_textbox.yview(tki.END)
         clients.remove(client_sending_data)
     return data

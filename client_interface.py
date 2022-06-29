@@ -2,6 +2,8 @@ import socket
 import tkinter as tki
 from tkinter import filedialog
 from scrolled_status_text import *
+from threading import Thread
+from time import sleep
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -36,19 +38,18 @@ def start_client(ip, port, root):
                                    command=lambda: browse_files(file_explorer_lbl))
     explore_files_btn.pack()
 
+    connection_thread = Thread(
+        target=lambda: attempt_connection(client_socket, ip, port, status_textbox))
+
     shutdown_btn = tki.Button(new_window,
                               text="Exit",
                               command=lambda: shutdown_client(new_window, client_socket))
     shutdown_btn.pack()
     # if the window is manually closed the client is closed
-    new_window.protocol("WM_DELETE_WINDOW", lambda: shutdown_client(new_window, client_socket))
+    new_window.protocol("WM_DELETE_WINDOW",
+                        lambda: shutdown_client(new_window, client_socket))
 
-    root.update()
-
-    connection_attempt_wait_time = 0
-    root.after(connection_attempt_wait_time,
-               lambda: attempt_connection(client_socket, ip, port, root, status_textbox, connection_attempt_wait_time,
-                                          shutdown_btn, new_window))
+    connection_thread.start()
 
 
 # Adds a file explorer in order to choose the file to upload.
@@ -66,36 +67,35 @@ def browse_files(file_explorer_lbl):
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds
-def attempt_connection(client_socket, ip, port, root, status_textbox, connection_attempt_wait_time, shutdown_btn,
-                       new_window):
+def attempt_connection(client_socket, ip, port, status_textbox):
     wait_time_increment = 2.5  # in seconds
     max_wait_time = 10  # in seconds
-
-    try:
-        client_socket.connect((ip, port))
-    except Exception as e:
-        # increases wait time each time due to the fact if it hasn't work up till then it most likely won't work
-        # immediately, so the system conserves resources.
-        if connection_attempt_wait_time < max_wait_time:
-            connection_attempt_wait_time += wait_time_increment
-        status_textbox.insert("connection refused trying in: " + str(
-            connection_attempt_wait_time) + " seconds", TextColor.MESSAGE)
-        print(str(e))
-        print("connection refused trying in: " + str(connection_attempt_wait_time) + " seconds")
-        root.after(int(connection_attempt_wait_time * 1000),
-                   lambda: attempt_connection(client_socket, ip, port, root, status_textbox,
-                                              connection_attempt_wait_time, shutdown_btn, new_window))
-
-    else:
-        client_connected(client_socket, root, status_textbox, shutdown_btn, new_window)
+    connection_attempt_wait_time = 0
+    connected = False
+    while not connected:
+        try:
+            client_socket.connect((ip, port))
+        except Exception as e:
+            # increases wait time each time due to the fact if it hasn't work up till then it most likely won't work
+            # immediately, so the system conserves resources.
+            if connection_attempt_wait_time < max_wait_time:
+                connection_attempt_wait_time += wait_time_increment
+            try:
+                status_textbox.insert("connection refused trying in: " + str(
+                    connection_attempt_wait_time) + " seconds", TextColor.MESSAGE)
+            except Exception as e:
+                print(str(e))
+            print(str(e))
+            print("connection refused trying in: " + str(connection_attempt_wait_time) + " seconds")
+            sleep(connection_attempt_wait_time)
+        else:
+            connected = True
+            client_connected(client_socket, status_textbox)
 
 
 # run when the client has successfully connected to the server
-def client_connected(client_socket, root, status_textbox, shutdown_btn, new_window):
+def client_connected(client_socket, status_textbox):
     status_textbox.insert("The client has successfully connected to the server!", TextColor.CONNECTION)
-
-    shutdown_btn['command'] = lambda: shutdown_client(new_window, client_socket)
-    new_window.protocol("WM_DELETE_WINDOW", lambda: shutdown_client(new_window, client_socket))
 
     private_key = rsa.generate_private_key(
         public_exponent=65537,
@@ -132,6 +132,5 @@ def shutdown_client(window, client_socket):
         client_socket.send("".encode())
     except Exception as e:
         print("Attempted to notify server of client shutdown.\n" + str(e))
-    client_socket.close()
     print("Client successfully closed!")
     window.destroy()

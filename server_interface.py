@@ -27,8 +27,7 @@ def start_server(ip, port, root):
     # We separate the connecting and receiving phase from the rest of the code in order to not interrupt the tkinter
     # main thread.
     connection_thread = threading.Thread(
-        target=lambda: connect(new_window, server_socket, clients,
-                               status_textbox))
+        target=lambda: connect(server_socket, clients, status_textbox))
 
     shutdown_btn = tki.Button(new_window,
                               text="Exit",
@@ -48,7 +47,7 @@ def start_server(ip, port, root):
 
 
 # Waits for a client to connect and receives the public key from the client.
-def connect(new_window, server_socket, clients, status_textbox):
+def connect(server_socket, clients, status_textbox):
     # Due to server shutting down sometimes before a connection has been made a try catch is required
     try:
         while True:

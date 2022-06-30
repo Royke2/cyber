@@ -4,7 +4,7 @@ from tkinter import filedialog
 from scrolled_status_text import *
 from threading import Thread
 from time import sleep
-from data_convetions import MessagePrefix
+from data_convetions import *
 from client import Client
 
 from cryptography.hazmat.backends import default_backend
@@ -41,7 +41,7 @@ def start_client(ip, port, root):
     explore_files_btn.pack()
 
     connection_thread = Thread(
-        target=lambda: attempt_connection(client_socket, ip, port, status_textbox))
+        target=lambda: attempt_connection(new_window, client_socket, ip, port, status_textbox))
 
     shutdown_btn = tki.Button(new_window,
                               text="Exit",
@@ -69,7 +69,7 @@ def browse_files(file_explorer_lbl):
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds
-def attempt_connection(client_socket, ip, port, status_textbox):
+def attempt_connection(window, client_socket, ip, port, status_textbox):
     wait_time_increment = 2.5  # in seconds
     max_wait_time = 10  # in seconds
     connection_attempt_wait_time = 0
@@ -92,11 +92,11 @@ def attempt_connection(client_socket, ip, port, status_textbox):
             sleep(connection_attempt_wait_time)
         else:
             connected = True
-            client_connected(client_socket, status_textbox)
+            client_connected(window, client_socket, status_textbox)
 
 
 # run when the client has successfully connected to the server
-def client_connected(client_socket, status_textbox):
+def client_connected(window, client_socket, status_textbox):
     status_textbox.insert("The client has successfully connected to the server!", TextColor.CONNECTION)
 
     private_key = rsa.generate_private_key(
@@ -118,21 +118,26 @@ def client_connected(client_socket, status_textbox):
 
     try:
         while True:
-            data = receive_from_server()
+            data = receive_from_server(window, client_socket)
             if data == MessagePrefix.DISCONNECT.value:
                 break
-            data = data.split(',')
+            data = data.split(SEPARATOR)
             fellow_client_address = ""
             fellow_client_key = ""
-            for i in range(0, data.len(), 2):
+            for i in range(0, len(data), 2):
                 if data[i] == MessagePrefix.CONNECTION.value:
-                    status_textbox.insert("The client has successfully connected to the server!", TextColor.CONNECTION)
                     fellow_client_address = data[i + 1]
                 elif data[i] == MessagePrefix.KEY.value:
-                    fellow_client_key == data[i + 1]
-            if fellow_client_address != "":
-                fellow_clients.append(Client(fellow_client_address, public_key=fellow_client_key))
-
+                    fellow_client_key = data[i + 1]
+                if fellow_client_address != "" and fellow_client_key != "":
+                    msg = "A client has successfully connected to the server! \n" + "Address:\t" + str(
+                        fellow_client_address)
+                    status_textbox.insert(msg, TextColor.CONNECTION)
+                    msg = "key: " + fellow_client_key
+                    status_textbox.insert(msg, TextColor.KEY)
+                    fellow_clients.append(Client(fellow_client_address, public_key=fellow_client_key))
+                    fellow_client_address = ""
+                    fellow_client_key = ""
     except Exception as e:
         print("client failed to receive data: " + str(e))
 
@@ -143,8 +148,8 @@ def send_key(sock, public_key):
 
 # checks if the server has closed and if so shuts down the client
 # @returns data from the client
-def receive_from_server(window, client_socket, server_socket):
-    data = server_socket.recv(2048).decode()
+def receive_from_server(window, client_socket):
+    data = client_socket.recv(2048).decode()
     if data == "":
         shutdown_client(window, client_socket)
     return data

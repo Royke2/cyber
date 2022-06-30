@@ -3,7 +3,7 @@ import socket
 import threading
 import tkinter as tki
 from scrolled_status_text import *
-from data_convetions import MessagePrefix
+from data_convetions import *
 import client
 
 from cryptography.hazmat.primitives.serialization import load_pem_public_key
@@ -59,9 +59,22 @@ def connect(new_window, server_socket, clients, status_textbox):
             print("attempting to connect to clients")
             ready_to_read, ready_to_write, in_error = select.select([server_socket] + client_sockets, [], [])
             for current_socket in ready_to_read:
-                # if the socket is new add him to the connection
+                # if the socket is new add him to the connection.
                 if current_socket == server_socket:
                     (client_socket, client_address) = server_socket.accept()
+                    # Sends the client that connect a list of all connected clients.
+                    # Sends the client that connect a list of all connected clients.
+                    client_list = ""
+                    for c in clients:
+                        if client_list != "":
+                            client_list += SEPARATOR
+                        client_list += (MessagePrefix.CONNECTION.value + SEPARATOR + c.client_address
+                        + SEPARATOR + MessagePrefix.KEY.value + SEPARATOR + c.public_key)
+                    print(client_list)
+                    if client_list != "":
+                        client_socket.send(client_list.encode())
+
+                    # Adds the current client to the list of clients.
                     clients.append(client.Client(client_address, client_socket))
                     status_textbox.insert("Connection Status: " + str(client_address) + " connected!",
                                           TextColor.CONNECTION)
@@ -83,6 +96,13 @@ def connect(new_window, server_socket, clients, status_textbox):
                                     status_textbox.insert(
                                         "Key from: " + str(current_client.client_address) + " received!: \n" + str(
                                             public_key), TextColor.KEY)
+                                    # Sends the current client address and public key to all connected clients.
+                                    for c in clients:
+                                        if c != current_client:
+                                            msg = (MessagePrefix.CONNECTION.value + SEPARATOR +
+                                                current_client.client_address + SEPARATOR +
+                                                MessagePrefix.KEY.value + SEPARATOR + current_client.public_key)
+                                            c.client_socket.send(msg.encode())
                             else:
                                 receive_data(current_client, clients, status_textbox)
     except Exception as e:

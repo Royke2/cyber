@@ -69,7 +69,7 @@ def connect(new_window, server_socket, clients, status_textbox):
                         if client_list != "":
                             client_list += SEPARATOR
                         client_list += (MessagePrefix.CONNECTION.value + SEPARATOR + c.client_address
-                        + SEPARATOR + MessagePrefix.KEY.value + SEPARATOR + c.public_key)
+                                        + SEPARATOR + MessagePrefix.KEY.value + SEPARATOR + c.public_key)
                     print(client_list)
                     if client_list != "":
                         client_socket.send(client_list.encode())
@@ -100,8 +100,8 @@ def connect(new_window, server_socket, clients, status_textbox):
                                     for c in clients:
                                         if c != current_client:
                                             msg = (MessagePrefix.CONNECTION.value + SEPARATOR +
-                                                current_client.client_address + SEPARATOR +
-                                                MessagePrefix.KEY.value + SEPARATOR + current_client.public_key)
+                                                   current_client.client_address + SEPARATOR +
+                                                   MessagePrefix.KEY.value + SEPARATOR + current_client.public_key)
                                             c.client_socket.send(msg.encode())
                             else:
                                 receive_data(current_client, clients, status_textbox)

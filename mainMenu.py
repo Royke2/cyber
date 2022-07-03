@@ -34,6 +34,7 @@ def main_menu():
     ip_txt.pack(pady=5)
 
     ip = tki.Text(root, height=1, width=15)
+    ip.insert(tki.END, '127.0.0.1')
     ip.pack(pady=5)
 
     port_txt = tki.Text(root, height=1,
@@ -43,6 +44,7 @@ def main_menu():
     port_txt.pack(pady=5)
 
     port = tki.Text(root, height=1, width=15)
+    port.insert(tki.END, '8820')
     port.pack(pady=5)
 
     local_ip_txt = tki.Text(root, height=1,

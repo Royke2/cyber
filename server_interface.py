@@ -62,7 +62,6 @@ def connect(server_socket, clients, status_textbox):
                 if current_socket == server_socket:
                     (client_socket, client_address) = server_socket.accept()
                     # Sends the client that connect a list of all connected clients.
-                    # Sends the client that connect a list of all connected clients.
                     client_list = ""
                     for c in clients:
                         if client_list != "":

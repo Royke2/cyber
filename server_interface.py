@@ -112,18 +112,18 @@ def shutdown_server(window, server_socket, clients):
 # If the client disconnected the server removes him from the client list.
 # @returns data received from client
 def receive_data(client_sending_data, clients, status_textbox, symmetrical_key):
-    data = MessagePrefix.DISCONNECT.value
+    data = MessagePrefix.DISCONNECT.value.encode()
     try:
         data = client_sending_data.client_socket.recv(BUFFER_SIZE)
     except Exception as e:
         print("Failed to receive data from: " + str(client_sending_data.client_address) + str(e))
     # The client has announced that it has disconnected.
-    if data.decode() == MessagePrefix.DISCONNECT.value:
+    if data == MessagePrefix.DISCONNECT.value.encode():
         client_disconnected(client_sending_data, status_textbox, clients)
     # The client has given an asymmetrical public key in order to get the symmetrical key.
     elif not client_sending_data.received_key:
         key_request(client_sending_data, data, status_textbox, symmetrical_key)
-    elif data[0] == MessagePrefix.FILE_RECIPIENT.value:
+    elif data[0] == MessagePrefix.FILE_RECIPIENT.value.encode():
         received_file(client_sending_data, data, clients, status_textbox)
 
 

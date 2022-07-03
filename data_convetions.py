@@ -6,8 +6,7 @@ class MessagePrefix(Enum):
     DISCONNECT = ""
     CONNECTION = "con"
     KEY = "key"
-    FILE_RECIPIENT = "rec"
-    FILE_SIZE = "size"
+    FILE_SIZE = "גודל"
 
 
 SEPARATOR = 'א'

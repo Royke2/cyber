@@ -5,9 +5,10 @@ from scrolled_status_text import *
 from threading import Thread
 from time import sleep
 from data_convetions import *
-from client import Client
 import os
+import math
 
+from cryptography.fernet import Fernet
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
@@ -132,7 +133,6 @@ def client_connected(window, client_socket, status_textbox, send_btn, file_explo
     print("Client: public key:" + str(pem))
     client_socket.send(pem)
 
-
     print("client: sent key to server.")
 
     try:
@@ -151,7 +151,8 @@ def client_connected(window, client_socket, status_textbox, send_btn, file_explo
                 print(symmetrical_key)
                 symmetrical_key = private_key.decrypt(symmetrical_key, pad)
                 print("final sy: " + str(symmetrical_key))
-                send_btn['command'] = lambda: send_file(socket, file_explorer_lbl, status_textbox, symmetrical_key)
+                send_btn['command'] = lambda: send_file(client_socket, file_explorer_lbl, status_textbox,
+                                                        Fernet(symmetrical_key))
                 send_btn['text'] = "send"
 
             if data[0] == MessagePrefix.CONNECTION.value:
@@ -173,36 +174,25 @@ def receive_connection(data, status_textbox):
 
 
 # Sends a different encrypted file to each client connected to the server.
-def send_file(sock, file_explorer_lbl, status_textbox):
-    if len(fellow_clients) == 0:
-        status_textbox.insert("No clients connected", TextColor.FAILURE)
+def send_file(sock, file_explorer_lbl, status_textbox, symmetrical_key):
+    # if len() == 0:
+    #     status_textbox.insert("No clients connected", TextColor.FAILURE)
+
     # Checks if a file is selected.
-    elif file_explorer_lbl["text"] != "":
+    if file_explorer_lbl["text"] != "":
         file_size = os.stat(file_explorer_lbl["text"]).st_size != 0
         # Checks if file isn't empty.
         if file_size != 0:
-            # For every client the code will tell the server who the client is and what is going to be the size of the total recieved message
-            for current_client in fellow_clients:
-                public_key = serialization.load_pem_public_key(bytes(current_client.public_key, encoding='utf8'),
-                                                               backend=default_backend())
-                pad = padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                                   algorithm=hashes.SHA256(),
-                                   label=None
-                                   )
-                with open(file_explorer_lbl["text"], "rb") as f:
-                    while True:
-                        # read the bytes from the file
-                        bytes_read = f.read(BUFFER_SIZE)
-
-                        if not bytes_read:
-                            # file transmitting is done
-                            break
-                        bytes_read = public_key.encrypt(bytes_read, pad)
-                        # we use sendall to assure transmission in busy networks
-                        socket.sendall(bytes_read)
-                # Tells the server what the recipient is and what the size of the file will be
-                sock.send(encrypted_file.encode())
-                status_textbox.insert("Sent file to: " + str(current_client.client_address), TextColor.FAILURE)
+            with open(file_explorer_lbl["text"], "rb") as f:
+                file = f.read()
+                encrypted_file = symmetrical_key.encrypt(file)
+                print("b" + str(encrypted_file))
+                sock.send((MessagePrefix.FILE_SIZE.value + SEPARATOR + str(len(encrypted_file)) + SEPARATOR).encode())
+                for i in range(0, len(encrypted_file), BUFFER_SIZE):
+                    bytes_read = encrypted_file[i:i + BUFFER_SIZE]
+                    # we use sendall to assure transmission in busy networks
+                    sock.sendall(bytes_read)
+                status_textbox.insert("Sent file to server", TextColor.MESSAGE_SENT.value)
         else:
             status_textbox.insert("File is empty", TextColor.FAILURE)
 

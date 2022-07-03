@@ -2,6 +2,7 @@ import select
 import socket
 import threading
 import tkinter as tki
+import math
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat import primitives
@@ -55,44 +56,42 @@ def connect(server_socket, clients, status_textbox):
     # Creates a symmetrical key used for file encryption
     symmetrical_key = Fernet.generate_key()
     # Due to server shutting down sometimes before a connection has been made a try catch is required
-    try:
-        while True:
-            client_sockets = []
-            for current_client in clients:
-                client_sockets.append(current_client.client_socket)
-
-            print("attempting to connect to clients")
-            ready_to_read, ready_to_write, in_error = select.select([server_socket] + client_sockets, [], [])
-            for current_socket in ready_to_read:
-                # if the socket is new add him to the connection.
-                if current_socket == server_socket:
-                    (client_socket, client_address) = server_socket.accept()
-                    # Makes a list of all connected clients to send the new client.
-                    client_list = ""
-                    for c in clients:
-                        # Sends the new client address to all connected clients.
-                        msg = MessagePrefix.CONNECTION.value + SEPARATOR + current_client.client_address
-                        c.client_socket.send(msg.encode())
-                        if client_list != "":
-                            client_list += SEPARATOR
-                        client_list += MessagePrefix.CONNECTION.value + SEPARATOR + c.client_address
-                    print(client_list)
+    # try:
+    while True:
+        client_sockets = []
+        for current_client in clients:
+            client_sockets.append(current_client.client_socket)
+        print("attempting to connect to clients")
+        ready_to_read, ready_to_write, in_error = select.select([server_socket] + client_sockets, [], [])
+        for current_socket in ready_to_read:
+            # if the socket is new add him to the connection.
+            if current_socket == server_socket:
+                (client_socket, client_address) = server_socket.accept()
+                # Makes a list of all connected clients to send the new client.
+                client_list = ""
+                for c in clients:
+                    # Sends the new client address to all connected clients.
+                    msg = MessagePrefix.CONNECTION.value + SEPARATOR + current_client.client_address
+                    c.client_socket.send(msg.encode())
                     if client_list != "":
-                        client_socket.send(client_list.encode())
-
-                    # Adds the current client to the list of clients.
-                    clients.append(client.Client(client_address, client_socket))
-                    status_textbox.insert("Connection Status: " + str(client_address) + " connected!",
-                                          TextColor.CONNECTION)
-                    print("Client connected")
-                else:
-                    print("received data from client")
-                    for current_client in clients:
-                        # finds the client to match the socket passing data
-                        if current_client.client_socket == current_socket:
-                            receive_data(current_client, clients, status_textbox, symmetrical_key)
-    except Exception as e:
-        print("!!! error in connection method !!! " + str(e))
+                        client_list += SEPARATOR
+                    client_list += MessagePrefix.CONNECTION.value + SEPARATOR + c.client_address
+                print(client_list)
+                if client_list != "":
+                    client_socket.send(client_list.encode())
+                # Adds the current client to the list of clients.
+                clients.append(client.Client(client_address, client_socket))
+                status_textbox.insert("Connection Status: " + str(client_address) + " connected!",
+                                      TextColor.CONNECTION)
+                print("Client connected")
+            else:
+                print("received data from client")
+                for current_client in clients:
+                    # finds the client to match the socket passing data
+                    if current_client.client_socket == current_socket:
+                        receive_data(current_client, clients, status_textbox, symmetrical_key)
+    # except Exception as e:
+    #     print("!!! error in connection method !!! " + str(e))
 
 
 def shutdown_server(window, server_socket, clients):
@@ -123,7 +122,7 @@ def receive_data(client_sending_data, clients, status_textbox, symmetrical_key):
     # The client has given an asymmetrical public key in order to get the symmetrical key.
     elif not client_sending_data.received_key:
         key_request(client_sending_data, data, status_textbox, symmetrical_key)
-    elif data[0] == MessagePrefix.FILE_RECIPIENT.value.encode():
+    else:
         received_file(client_sending_data, data, clients, status_textbox)
 
 
@@ -156,19 +155,43 @@ def key_request(client_sending_data, public_key, status_textbox, symmetrical_key
     # next message will be the key.
     client_sending_data.client_socket.send(MessagePrefix.KEY.value.encode())
     client_sending_data.client_socket.send(encrypted_symmetrical_key)
+    client_sending_data.received_key = True
 
 
 def received_file(client_sending_data, data, clients, status_textbox):
-    target_client_exists = False
-    target_client = None
-    for current_client in clients:
-        if data[1] == current_client.client_address:
-            target_client_exists = True
-            target_client = current_client
-            break
-    if target_client_exists:
-        status_textbox.insert("Received file from: " + str(client_sending_data.client_address),
-                              TextColor.MESSAGE_SENT.value)
-        file = client_sending_data.client_socket.recv(BUFFER_SIZE).decode()
-        target_client.client_socket.send(file)
-        status_textbox.insert("Sent file to: " + str(target_client.client_address), TextColor.MESSAGE_SENT)
+    # if len(clients) > 1:
+    try:
+        data = data.decode().split(SEPARATOR)
+        if data[0] == MessagePrefix.FILE_SIZE.value:
+            file_size = int(data[1])
+            read_count = math.ceil(file_size / BUFFER_SIZE)
+            # There is a bug that merges the file size and the first part of the file. This should handle this issue
+            file = data[2].encode()
+            for i in range(read_count):
+                file += client_sending_data.client_socket.recv(BUFFER_SIZE)
+            if len(file) != file_size:
+                status_textbox.insert(
+                    "File not fully received!  desired: " + str(file_size) + "received: " + str(len(file)),
+                    TextColor.FAILURE.value)
+            else:
+                status_textbox.insert("Received file from: " + str(client_sending_data.client_address),
+                                      TextColor.MESSAGE_SENT.value)
+                for current_client in clients:
+                    if client_sending_data.client_address == current_client.client_address:
+                        break
+                    current_client.client_socket.send(
+                        (MessagePrefix.FILE_SIZE.value + SEPARATOR + str(len(file)) + SEPARATOR).encode())
+                    print("erhyguiergbn")
+                    for i in range(0, len(file), BUFFER_SIZE):
+                        bytes_read = file[i:i + BUFFER_SIZE]
+                        # we use sendall to assure transmission in busy networks
+                        current_client.client_socket.sendall(bytes_read)
+                    status_textbox.insert("Sent file to: " + str(current_client.client_address),
+                                          TextColor.MESSAGE_SENT.value)
+        else:
+            print("received unknown data")
+    except Exception as e:
+        print("Failed in received_file(): " + str(e))
+        status_textbox.insert("Failed to receive info!", TextColor.FAILURE.value)
+# else:
+#     status_textbox.insert("Data received from only user. ", TextColor.MESSAGE.value)

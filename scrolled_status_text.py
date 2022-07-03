@@ -20,5 +20,8 @@ class ScrolledStatusText(scrolledtext.ScrolledText):
 class TextColor(Enum):
     CONNECTION = 'green'
     DISCONNECTION = 'red'
+    # todo: change colors
+    FAILURE = 'magenta'
+    MESSAGE_SENT = 'yellow'
     KEY = 'blue'
     MESSAGE = 'black'

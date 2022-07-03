@@ -6,10 +6,13 @@ from threading import Thread
 from time import sleep
 from data_convetions import *
 from client import Client
+import os
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
 
 
 def start_client(ip, port, root):
@@ -18,6 +21,10 @@ def start_client(ip, port, root):
     new_window.geometry("500x500")
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # Sets a buffer size for the socket
+    client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_SNDBUF, BUFFER_SIZE)
+
+    # TODO: fix
     socket.getaddrinfo('localhost', 8080)
 
     ip = ip.get("1.0", "end-1c")
@@ -35,13 +42,19 @@ def start_client(ip, port, root):
                                   width=100, height=4,
                                   fg="blue")
     file_explorer_lbl.pack()
+
+    send_btn = tki.Button(new_window, text="Waiting for key from server",
+                          command=lambda: None,
+                          state=tki.DISABLED)
     explore_files_btn = tki.Button(new_window,
                                    text="Browse Files",
-                                   command=lambda: browse_files(file_explorer_lbl))
+                                   command=lambda: browse_files(file_explorer_lbl, send_btn))
     explore_files_btn.pack()
+    send_btn.pack()
 
     connection_thread = Thread(
-        target=lambda: attempt_connection(new_window, client_socket, ip, port, status_textbox))
+        target=lambda: attempt_connection(new_window, client_socket, ip, port, status_textbox, send_btn,
+                                          file_explorer_lbl))
 
     shutdown_btn = tki.Button(new_window,
                               text="Exit",
@@ -55,7 +68,7 @@ def start_client(ip, port, root):
 
 
 # Adds a file explorer in order to choose the file to upload.
-def browse_files(file_explorer_lbl):
+def browse_files(file_explorer_lbl, send_btn):
     filename = filedialog.askopenfilename(initialdir="/",
                                           title="Select a File",
                                           filetypes=(("Text files",
@@ -65,11 +78,12 @@ def browse_files(file_explorer_lbl):
 
     # Change label contents
     if filename != "":
-        file_explorer_lbl.configure(text="File Opened: " + filename)
+        file_explorer_lbl.configure(text=filename)
+        send_btn["state"] = tki.NORMAL
 
 
 # attempts to connect to the server in an incrementing loop till it succeeds
-def attempt_connection(window, client_socket, ip, port, status_textbox):
+def attempt_connection(window, client_socket, ip, port, status_textbox, send_btn, file_explorer_lbl):
     wait_time_increment = 2.5  # in seconds
     max_wait_time = 10  # in seconds
     connection_attempt_wait_time = 0
@@ -92,16 +106,16 @@ def attempt_connection(window, client_socket, ip, port, status_textbox):
             sleep(connection_attempt_wait_time)
         else:
             connected = True
-            client_connected(window, client_socket, status_textbox)
+            client_connected(window, client_socket, status_textbox, send_btn, file_explorer_lbl)
 
 
 # run when the client has successfully connected to the server
-def client_connected(window, client_socket, status_textbox):
+def client_connected(window, client_socket, status_textbox, send_btn, file_explorer_lbl):
     status_textbox.insert("The client has successfully connected to the server!", TextColor.CONNECTION)
 
     private_key = rsa.generate_private_key(
         public_exponent=65537,
-        key_size=2048,
+        key_size=BUFFER_SIZE,
         backend=default_backend()
     )
 
@@ -110,11 +124,18 @@ def client_connected(window, client_socket, status_textbox):
     pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                   format=serialization.PublicFormat.SubjectPublicKeyInfo)
     print("Client: public key:" + str(pem))
-    client_socket.send(pem)
+    client_socket.send((MessagePrefix.KEY.value + SEPARATOR).encode() + pem)
+    symmetrical_key = receive_from_server(window, client_socket)
+    pad = padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+    )
+    symmetrical_key = private_key.decrypt(bytes(symmetrical_key, encoding='unicode_escape'), pad)
+    send_btn['command'] = lambda: send_file(socket, file_explorer_lbl, status_textbox, symmetrical_key)
+    send_btn['text'] = "send"
 
     print("client: sent key to server.")
-
-    fellow_clients = []
 
     try:
         while True:
@@ -122,34 +143,64 @@ def client_connected(window, client_socket, status_textbox):
             if data == MessagePrefix.DISCONNECT.value:
                 break
             data = data.split(SEPARATOR)
-            fellow_client_address = ""
-            fellow_client_key = ""
-            for i in range(0, len(data), 2):
-                if data[i] == MessagePrefix.CONNECTION.value:
-                    fellow_client_address = data[i + 1]
-                elif data[i] == MessagePrefix.KEY.value:
-                    fellow_client_key = data[i + 1]
-                if fellow_client_address != "" and fellow_client_key != "":
-                    msg = "A client has successfully connected to the server! \n" + "Address:\t" + str(
-                        fellow_client_address)
-                    status_textbox.insert(msg, TextColor.CONNECTION)
-                    msg = "key: " + fellow_client_key
-                    status_textbox.insert(msg, TextColor.KEY)
-                    fellow_clients.append(Client(fellow_client_address, public_key=fellow_client_key))
-                    fellow_client_address = ""
-                    fellow_client_key = ""
+
+            if data[0] == MessagePrefix.CONNECTION.value:
+                receive_connection(data, status_textbox)
+
     except Exception as e:
         print("client failed to receive data: " + str(e))
 
 
-def send_key(sock, public_key):
-    sock.send(public_key.encode())
+def receive_connection(data, status_textbox):
+    for i in range(0, len(data), 2):
+        if data[i] == MessagePrefix.CONNECTION.value:
+            fellow_client_address = data[i + 1]
+        if fellow_client_address != "":
+            msg = "A client has successfully connected to the server! \n" + "Address:\t" + str(
+                fellow_client_address)
+            status_textbox.insert(msg, TextColor.CONNECTION)
+            fellow_client_address = ""
+
+
+# Sends a different encrypted file to each client connected to the server.
+def send_file(sock, file_explorer_lbl, status_textbox):
+    if len(fellow_clients) == 0:
+        status_textbox.insert("No clients connected", TextColor.FAILURE)
+    # Checks if a file is selected.
+    elif file_explorer_lbl["text"] != "":
+        file_size = os.stat(file_explorer_lbl["text"]).st_size != 0
+        # Checks if file isn't empty.
+        if file_size != 0:
+            # For every client the code will tell the server who the client is and what is going to be the size of the total recieved message
+            for current_client in fellow_clients:
+                public_key = serialization.load_pem_public_key(bytes(current_client.public_key, encoding='utf8'),
+                                                               backend=default_backend())
+                pad = padding.OAEP(mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                                   algorithm=hashes.SHA256(),
+                                   label=None
+                                   )
+                with open(file_explorer_lbl["text"], "rb") as f:
+                    while True:
+                        # read the bytes from the file
+                        bytes_read = f.read(BUFFER_SIZE)
+
+                        if not bytes_read:
+                            # file transmitting is done
+                            break
+                        bytes_read = public_key.encrypt(bytes_read, pad)
+                        # we use sendall to assure transmission in busy networks
+                        socket.sendall(bytes_read)
+                # Tells the server what the recipient is and what the size of the file will be
+                sock.send(encrypted_file.encode())
+                status_textbox.insert("Sent file to: " + str(current_client.client_address), TextColor.FAILURE)
+        else:
+            status_textbox.insert("File is empty", TextColor.FAILURE)
 
 
 # checks if the server has closed and if so shuts down the client
 # @returns data from the client
 def receive_from_server(window, client_socket):
-    data = client_socket.recv(2048).decode()
+    data = client_socket.recv(BUFFER_SIZE).decode(encoding='unicode_escape')
     if data == "":
         shutdown_client(window, client_socket)
     return data

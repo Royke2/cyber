@@ -2,11 +2,15 @@ import select
 import socket
 import threading
 import tkinter as tki
-from scrolled_status_text import *
-from data_convetions import *
-import client
 
-from cryptography.hazmat.primitives.serialization import load_pem_public_key
+from cryptography.fernet import Fernet
+from cryptography.hazmat import primitives
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import padding
+
+import client
+from data_convetions import *
+from scrolled_status_text import *
 
 
 def start_server(ip, port, root):
@@ -31,11 +35,11 @@ def start_server(ip, port, root):
 
     shutdown_btn = tki.Button(new_window,
                               text="Exit",
-                              command=lambda: shutdown_server(new_window, server_socket, clients, connection_thread))
+                              command=lambda: shutdown_server(new_window, server_socket, clients))
     shutdown_btn.pack()
     # if the window is manually closed the server is closed
     new_window.protocol("WM_DELETE_WINDOW",
-                        lambda: shutdown_server(new_window, server_socket, clients, connection_thread))
+                        lambda: shutdown_server(new_window, server_socket, clients))
 
     status_textbox.pack()
 
@@ -48,6 +52,8 @@ def start_server(ip, port, root):
 
 # Waits for a client to connect and receives the public key from the client.
 def connect(server_socket, clients, status_textbox):
+    # Creates a symmetrical key used for file encryption
+    symmetrical_key = Fernet.generate_key()
     # Due to server shutting down sometimes before a connection has been made a try catch is required
     try:
         while True:
@@ -61,13 +67,15 @@ def connect(server_socket, clients, status_textbox):
                 # if the socket is new add him to the connection.
                 if current_socket == server_socket:
                     (client_socket, client_address) = server_socket.accept()
-                    # Sends the client that connect a list of all connected clients.
+                    # Makes a list of all connected clients to send the new client.
                     client_list = ""
                     for c in clients:
+                        # Sends the new client address to all connected clients.
+                        msg = MessagePrefix.CONNECTION.value + SEPARATOR + current_client.client_address
+                        c.client_socket.send(msg.encode())
                         if client_list != "":
                             client_list += SEPARATOR
-                        client_list += (MessagePrefix.CONNECTION.value + SEPARATOR + c.client_address
-                                        + SEPARATOR + MessagePrefix.KEY.value + SEPARATOR + c.public_key)
+                        client_list += MessagePrefix.CONNECTION.value + SEPARATOR + c.client_address
                     print(client_list)
                     if client_list != "":
                         client_socket.send(client_list.encode())
@@ -79,35 +87,15 @@ def connect(server_socket, clients, status_textbox):
                     print("Client connected")
                 else:
                     print("received data from client")
-                    client_located = False
                     for current_client in clients:
                         # finds the client to match the socket passing data
                         if current_client.client_socket == current_socket:
-                            client_located = True
-                            # checks if the client has already sent a public key. if he hasn't then this message is the
-                            # clients public key
-                            if current_client.public_key == "":
-                                public_key = receive_data(current_client, clients, status_textbox)
-                                # public_key = load_pem_public_key(client_socket.recv(2048))
-                                if public_key != "":
-                                    current_client.public_key = public_key
-                                    status_textbox.insert(
-                                        "Key from: " + str(current_client.client_address) + " received!: \n" + str(
-                                            public_key), TextColor.KEY)
-                                    # Sends the current client address and public key to all connected clients.
-                                    for c in clients:
-                                        if c != current_client:
-                                            msg = (MessagePrefix.CONNECTION.value + SEPARATOR +
-                                                   current_client.client_address + SEPARATOR +
-                                                   MessagePrefix.KEY.value + SEPARATOR + current_client.public_key)
-                                            c.client_socket.send(msg.encode())
-                            else:
-                                receive_data(current_client, clients, status_textbox)
+                            receive_data(current_client, clients, status_textbox, symmetrical_key)
     except Exception as e:
         print("!!! error in connection method !!! " + str(e))
 
 
-def shutdown_server(window, server_socket, clients, connect_thread):
+def shutdown_server(window, server_socket, clients):
     try:
         # connect_thread.stop()
         for current_client in clients:
@@ -123,18 +111,65 @@ def shutdown_server(window, server_socket, clients, connect_thread):
 # Gets a client that has sent data and checks if the client sent a disconnection message or an error has occurred.
 # If the client disconnected the server removes him from the client list.
 # @returns data received from client
-def receive_data(client_sending_data, clients, status_textbox):
+def receive_data(client_sending_data, clients, status_textbox, symmetrical_key):
     data = MessagePrefix.DISCONNECT.value
     try:
-        data = client_sending_data.client_socket.recv(2048).decode()
+        data = client_sending_data.client_socket.recv(BUFFER_SIZE).decode()
     except Exception as e:
         print("Failed to receive data from: " + str(client_sending_data.client_address) + str(e))
-    if data == MessagePrefix.DISCONNECT.value:
-        try:
-            client_sending_data.client_socket.close()
-        except Exception as e:
-            print("Failed to close: " + client_sending_data.client_address + str(e))
-        status_textbox.insert("Client: " + str(client_sending_data.client_address) + " has disconnected!",
-                              TextColor.DISCONNECTION)
-        clients.remove(client_sending_data)
-    return data
+    data = data.split(SEPARATOR)
+    # Checks the prefix of each data received and acts accordingly
+    for i in range(0, len(data), 2):
+        # The client has announced that it has disconnected.
+        if data[i] == MessagePrefix.DISCONNECT.value:
+            client_disconnected(client_sending_data, status_textbox, clients)
+            break
+
+        # The client has given an asymmetrical public key in order to get the symmetrical key.
+        elif data[i] == MessagePrefix.KEY.value:
+            key_request(client_sending_data, data[i + 1], status_textbox, symmetrical_key)
+
+        elif data[i] == MessagePrefix.FILE_RECIPIENT.value:
+            received_file(client_sending_data, data, clients, status_textbox)
+
+
+def client_disconnected(client_sending_data, status_textbox, clients):
+    try:
+        client_sending_data.client_socket.close()
+    except Exception as e:
+        print("Failed to close: " + client_sending_data.client_address + str(e))
+    status_textbox.insert("Client: " + str(client_sending_data.client_address) + " has disconnected!",
+                          TextColor.DISCONNECTION)
+    clients.remove(client_sending_data)
+
+
+# Sends the client an encrypted version the symmetrical key using the asymmetrical public key that the client sent
+def key_request(client_sending_data, public_key, status_textbox, symmetrical_key):
+    status_textbox.insert(
+        "Key from: " + str(client_sending_data.client_address) + " received!: \n" + str(
+            public_key), TextColor.KEY)
+    public_key = primitives.serialization.load_pem_public_key(
+        public_key.encode(), backend=default_backend())
+    pad = padding.OAEP(mgf=padding.MGF1(algorithm=primitives.hashes.SHA256()),
+                       algorithm=primitives.hashes.SHA256(),
+                       label=None
+                       )
+    encrypted_symmetrical_key = public_key.encrypt(symmetrical_key, pad)
+    # Sends key without prefix due to the fact the encrypted value may have any type of value
+    client_sending_data.client_socket.send(encrypted_symmetrical_key)
+
+
+def received_file(client_sending_data, data, clients, status_textbox):
+    target_client_exists = False
+    target_client = None
+    for current_client in clients:
+        if data[1] == current_client.client_address:
+            target_client_exists = True
+            target_client = current_client
+            break
+    if target_client_exists:
+        status_textbox.insert("Received file from: " + str(client_sending_data.client_address),
+                              TextColor.MESSAGE_SENT.value)
+        file = client_sending_data.client_socket.recv(BUFFER_SIZE).decode()
+        target_client.client_socket.send(file)
+        status_textbox.insert("Sent file to: " + str(target_client.client_address), TextColor.MESSAGE_SENT)

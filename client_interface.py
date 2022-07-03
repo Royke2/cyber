@@ -118,22 +118,20 @@ def client_connected(window, client_socket, status_textbox, send_btn, file_explo
         key_size=BUFFER_SIZE,
         backend=default_backend()
     )
+    print("pry: " + str(private_key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.PKCS8,
+        encryption_algorithm=serialization.NoEncryption()
+    )
+    ))
 
     public_key = private_key.public_key()
     # serializing the key in order to be able to send the key to the server
     pem = public_key.public_bytes(encoding=serialization.Encoding.PEM,
                                   format=serialization.PublicFormat.SubjectPublicKeyInfo)
     print("Client: public key:" + str(pem))
-    client_socket.send((MessagePrefix.KEY.value + SEPARATOR).encode() + pem)
-    symmetrical_key = receive_from_server(window, client_socket)
-    pad = padding.OAEP(
-        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-        algorithm=hashes.SHA256(),
-        label=None
-    )
-    symmetrical_key = private_key.decrypt(bytes(symmetrical_key, encoding='unicode_escape'), pad)
-    send_btn['command'] = lambda: send_file(socket, file_explorer_lbl, status_textbox, symmetrical_key)
-    send_btn['text'] = "send"
+    client_socket.send(pem)
+
 
     print("client: sent key to server.")
 
@@ -143,6 +141,18 @@ def client_connected(window, client_socket, status_textbox, send_btn, file_explo
             if data == MessagePrefix.DISCONNECT.value:
                 break
             data = data.split(SEPARATOR)
+            if data[0] == MessagePrefix.KEY.value:
+                symmetrical_key = client_socket.recv(BUFFER_SIZE)
+                pad = padding.OAEP(
+                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                    algorithm=hashes.SHA256(),
+                    label=None
+                )
+                print(symmetrical_key)
+                symmetrical_key = private_key.decrypt(symmetrical_key, pad)
+                print("final sy: " + str(symmetrical_key))
+                send_btn['command'] = lambda: send_file(socket, file_explorer_lbl, status_textbox, symmetrical_key)
+                send_btn['text'] = "send"
 
             if data[0] == MessagePrefix.CONNECTION.value:
                 receive_connection(data, status_textbox)
@@ -200,8 +210,8 @@ def send_file(sock, file_explorer_lbl, status_textbox):
 # checks if the server has closed and if so shuts down the client
 # @returns data from the client
 def receive_from_server(window, client_socket):
-    data = client_socket.recv(BUFFER_SIZE).decode(encoding='unicode_escape')
-    if data == "":
+    data = client_socket.recv(BUFFER_SIZE).decode()
+    if data == MessagePrefix.DISCONNECT:
         shutdown_client(window, client_socket)
     return data
 

@@ -114,23 +114,17 @@ def shutdown_server(window, server_socket, clients):
 def receive_data(client_sending_data, clients, status_textbox, symmetrical_key):
     data = MessagePrefix.DISCONNECT.value
     try:
-        data = client_sending_data.client_socket.recv(BUFFER_SIZE).decode()
+        data = client_sending_data.client_socket.recv(BUFFER_SIZE)
     except Exception as e:
         print("Failed to receive data from: " + str(client_sending_data.client_address) + str(e))
-    data = data.split(SEPARATOR)
-    # Checks the prefix of each data received and acts accordingly
-    for i in range(0, len(data), 2):
-        # The client has announced that it has disconnected.
-        if data[i] == MessagePrefix.DISCONNECT.value:
-            client_disconnected(client_sending_data, status_textbox, clients)
-            break
-
-        # The client has given an asymmetrical public key in order to get the symmetrical key.
-        elif data[i] == MessagePrefix.KEY.value:
-            key_request(client_sending_data, data[i + 1], status_textbox, symmetrical_key)
-
-        elif data[i] == MessagePrefix.FILE_RECIPIENT.value:
-            received_file(client_sending_data, data, clients, status_textbox)
+    # The client has announced that it has disconnected.
+    if data.decode() == MessagePrefix.DISCONNECT.value:
+        client_disconnected(client_sending_data, status_textbox, clients)
+    # The client has given an asymmetrical public key in order to get the symmetrical key.
+    elif not client_sending_data.received_key:
+        key_request(client_sending_data, data, status_textbox, symmetrical_key)
+    elif data[0] == MessagePrefix.FILE_RECIPIENT.value:
+        received_file(client_sending_data, data, clients, status_textbox)
 
 
 def client_disconnected(client_sending_data, status_textbox, clients):
@@ -148,14 +142,19 @@ def key_request(client_sending_data, public_key, status_textbox, symmetrical_key
     status_textbox.insert(
         "Key from: " + str(client_sending_data.client_address) + " received!: \n" + str(
             public_key), TextColor.KEY)
+    print("\nsy: " + str(symmetrical_key))
+
     public_key = primitives.serialization.load_pem_public_key(
-        public_key.encode(), backend=default_backend())
+        public_key, backend=default_backend())
     pad = padding.OAEP(mgf=padding.MGF1(algorithm=primitives.hashes.SHA256()),
                        algorithm=primitives.hashes.SHA256(),
                        label=None
                        )
     encrypted_symmetrical_key = public_key.encrypt(symmetrical_key, pad)
-    # Sends key without prefix due to the fact the encrypted value may have any type of value
+    # Sends key without prefix due to the fact the encrypted value may have any type of value.
+    # In order for the client to know the key is the key it sends the prefix in a message before telling the client the
+    # next message will be the key.
+    client_sending_data.client_socket.send(MessagePrefix.KEY.value.encode())
     client_sending_data.client_socket.send(encrypted_symmetrical_key)
 
 

@@ -7,3 +7,4 @@ class Client:
     def __init__(self, client_address, client_socket=""):
         self.client_address = str(client_address)
         self.client_socket = client_socket
+        self.received_key = False

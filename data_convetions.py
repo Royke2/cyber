@@ -5,10 +5,10 @@ from enum import Enum
 class MessagePrefix(Enum):
     DISCONNECT = ""
     CONNECTION = "con"
-    KEY = "מפתח"
+    KEY = "key"
     FILE_RECIPIENT = "rec"
     FILE_SIZE = "size"
 
 
 SEPARATOR = 'א'
-BUFFER_SIZE = 4096
+BUFFER_SIZE = 1024

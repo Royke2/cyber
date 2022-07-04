@@ -159,7 +159,6 @@ def key_request(client_sending_data, public_key, status_textbox, symmetrical_key
 
 
 def received_file(client_sending_data, data, clients, status_textbox):
-    # if len(clients) > 1:
     try:
         data = data.decode().split(SEPARATOR)
         if data[0] == MessagePrefix.FILE_NAME.value:
@@ -191,5 +190,6 @@ def received_file(client_sending_data, data, clients, status_textbox):
     except Exception as e:
         print("Failed in received_file(): " + str(e))
         status_textbox.insert("Failed to receive info!", TextColor.FAILURE.value)
-# else:
-#     status_textbox.insert("Data received from only user. ", TextColor.MESSAGE.value)
+
+    if len(clients) < 1:
+        status_textbox.insert("Data received from only user. ", TextColor.MESSAGE.value)

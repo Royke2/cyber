@@ -2,8 +2,8 @@ import math
 from data_convetions import BUFFER_SIZE
 
 
-# @param data The data sent that includes the file size prefix at the start
-# @param sending_socket The socket sending the file
+# @param data The data sent that includes the file name prefix at the start and then file size.
+# @param sending_socket The socket sending the file.
 # Returns a byte array containing a file sent in parts from a given socket.
 def get_file(data, sending_socket):
     file_size = int(data[3])

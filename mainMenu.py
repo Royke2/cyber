@@ -1,7 +1,7 @@
 import socket
 import tkinter as tki
-from server import start_server
-from client import start_client
+from server_interface import start_server
+from client_interface import start_client
 
 root = tki.Tk()
 root.geometry("300x400")

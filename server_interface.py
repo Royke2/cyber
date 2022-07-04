@@ -175,7 +175,7 @@ def received_file(client_sending_data, data, clients, status_textbox):
                                       TextColor.MESSAGE_SENT.value)
                 for current_client in clients:
                     if client_sending_data.client_address == current_client.client_address:
-                        break
+                        continue
                     opening_message = (
                             MessagePrefix.FILE_NAME.value + SEPARATOR + file_name + SEPARATOR +
                             MessagePrefix.FILE_SIZE.value + SEPARATOR + str(len(file)) + SEPARATOR)

@@ -2,7 +2,7 @@ import select
 import socket
 import threading
 import tkinter as tki
-import math
+import util
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat import primitives
@@ -162,13 +162,10 @@ def received_file(client_sending_data, data, clients, status_textbox):
     # if len(clients) > 1:
     try:
         data = data.decode().split(SEPARATOR)
-        if data[0] == MessagePrefix.FILE_SIZE.value:
-            file_size = int(data[1])
-            read_count = math.ceil(file_size / BUFFER_SIZE)
-            # There is a bug that merges the file size and the first part of the file. This should handle this issue
-            file = data[2].encode()
-            for i in range(read_count):
-                file += client_sending_data.client_socket.recv(BUFFER_SIZE)
+        if data[0] == MessagePrefix.FILE_NAME.value:
+            file = util.get_file(data, client_sending_data.client_socket)
+            file_name = data[1]
+            file_size = int(data[3])
             if len(file) != file_size:
                 status_textbox.insert(
                     "File not fully received!  desired: " + str(file_size) + "received: " + str(len(file)),
@@ -179,8 +176,10 @@ def received_file(client_sending_data, data, clients, status_textbox):
                 for current_client in clients:
                     if client_sending_data.client_address == current_client.client_address:
                         break
-                    current_client.client_socket.send(
-                        (MessagePrefix.FILE_SIZE.value + SEPARATOR + str(len(file)) + SEPARATOR).encode())
+                    opening_message = (
+                            MessagePrefix.FILE_NAME.value + SEPARATOR + file_name + SEPARATOR +
+                            MessagePrefix.FILE_SIZE.value + SEPARATOR + str(len(file)) + SEPARATOR)
+                    current_client.client_socket.send(opening_message.encode())
                     for i in range(0, len(file), BUFFER_SIZE):
                         bytes_read = file[i:i + BUFFER_SIZE]
                         # we use sendall to assure transmission in busy networks

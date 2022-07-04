@@ -181,7 +181,6 @@ def received_file(client_sending_data, data, clients, status_textbox):
                         break
                     current_client.client_socket.send(
                         (MessagePrefix.FILE_SIZE.value + SEPARATOR + str(len(file)) + SEPARATOR).encode())
-                    print("erhyguiergbn")
                     for i in range(0, len(file), BUFFER_SIZE):
                         bytes_read = file[i:i + BUFFER_SIZE]
                         # we use sendall to assure transmission in busy networks

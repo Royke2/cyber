@@ -142,18 +142,7 @@ def client_connected(window, client_socket, status_textbox, send_btn, file_explo
                 break
             data = data.split(SEPARATOR)
             if data[0] == MessagePrefix.KEY.value:
-                symmetrical_key = client_socket.recv(BUFFER_SIZE)
-                pad = padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-                print(symmetrical_key)
-                symmetrical_key = private_key.decrypt(symmetrical_key, pad)
-                print("final sy: " + str(symmetrical_key))
-                send_btn['command'] = lambda: send_file(client_socket, file_explorer_lbl, status_textbox,
-                                                        Fernet(symmetrical_key))
-                send_btn['text'] = "send"
+                receive_key(client_socket, private_key, send_btn, status_textbox, file_explorer_lbl)
 
             if data[0] == MessagePrefix.CONNECTION.value:
                 receive_connection(data, status_textbox)
@@ -171,6 +160,21 @@ def receive_connection(data, status_textbox):
                 fellow_client_address)
             status_textbox.insert(msg, TextColor.CONNECTION)
             fellow_client_address = ""
+
+
+def receive_key(client_socket, private_key, send_btn, status_textbox, file_explorer_lbl):
+    symmetrical_key = client_socket.recv(BUFFER_SIZE)
+    pad = padding.OAEP(
+        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+        algorithm=hashes.SHA256(),
+        label=None
+    )
+    print(symmetrical_key)
+    symmetrical_key = private_key.decrypt(symmetrical_key, pad)
+    print("final sy: " + str(symmetrical_key))
+    send_btn['command'] = lambda: send_file(client_socket, file_explorer_lbl, status_textbox,
+                                            Fernet(symmetrical_key))
+    send_btn['text'] = "send"
 
 
 # Sends a different encrypted file to each client connected to the server.

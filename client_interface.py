@@ -272,6 +272,7 @@ def send_file(sock, file_explorer_lbl, status_textbox, symmetrical_key):
         if file_size != 0:
             with open(file_explorer_lbl["text"], "rb") as f:
                 file = f.read()
+                print("\n\n\nsent: " + str(file))
                 encrypted_file = symmetrical_key.encrypt(file)
                 file_name = pathlib.PurePosixPath(file_explorer_lbl["text"]).name
                 file_size = len(encrypted_file)

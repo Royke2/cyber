@@ -166,6 +166,7 @@ def received_file(client_sending_data, data, clients, status_textbox):
             file_name = data[1]
             file_size = int(data[3])
             if len(file) != file_size:
+                print("\n\n\nGOT: "+ str(file))
                 status_textbox.insert(
                     "File not fully received!  desired: " + str(file_size) + "received: " + str(len(file)),
                     TextColor.FAILURE.value)

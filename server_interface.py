@@ -3,6 +3,7 @@ import socket
 import threading
 import tkinter as tki
 import util
+import math
 
 from cryptography.fernet import Fernet
 from cryptography.hazmat import primitives
@@ -162,11 +163,18 @@ def received_file(client_sending_data, data, clients, status_textbox):
     try:
         data = data.decode().split(SEPARATOR)
         if data[0] == MessagePrefix.FILE_NAME.value:
-            file = util.get_file(data, client_sending_data.client_socket)
+            file_size = int(data[3])
+            read_count = math.ceil(file_size / BUFFER_SIZE)
+            # There is a bug that merges the file size and the first part of the file. This should handle this issue
+            file = data[4].encode()
+            if read_count == 1:
+                read_count = 0
+            for i in range(read_count):
+                print("want: " + str(read_count) + "got: " + str(i))
+                file += client_sending_data.client_socket.recv(BUFFER_SIZE)
             file_name = data[1]
             file_size = int(data[3])
             if len(file) != file_size:
-                print("\n\n\nGOT: "+ str(file))
                 status_textbox.insert(
                     "File not fully received!  desired: " + str(file_size) + "received: " + str(len(file)),
                     TextColor.FAILURE.value)
